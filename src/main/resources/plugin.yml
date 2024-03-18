@@ -1,0 +1,12 @@
+name: StickDeHeal
+version: 1.0
+main: com.afelia.stickdeheal.Main
+author: Elias
+description: A Minecraft plugin that provides a healing stick.
+api-version: '1.20' # Adjust this according to the version of Bukkit/Spigot you're using
+
+commands:
+  givehealstick:
+    description: Gives the player a healing stick.
+    usage: /givehealstick
+

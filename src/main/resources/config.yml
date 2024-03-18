@@ -1,0 +1,8 @@
+# StickDeHeal Plugin Configuration
+max_uses: 10
+stick_name: "&aHealing Stick"
+stick_lore:
+  - "&7Right-click to heal instantly!"
+  - "&7Remaining Uses: &e%d%/%d%"
+custom_model_data: 123
+cooldown: 5

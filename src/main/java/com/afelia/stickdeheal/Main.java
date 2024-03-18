@@ -1,0 +1,152 @@
+package com.afelia.stickdeheal;
+
+import org.bukkit.Material;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.NotNull;
+import org.bukkit.ChatColor;
+
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class Main extends JavaPlugin implements Listener {
+    private int maxUses;
+    private int cooldownSeconds;
+    private Map<Player, Long> lastUsedTimeMap;
+
+    @Override
+    public void onEnable() {
+        getServer().getPluginManager().registerEvents(this, this);
+        saveDefaultConfig();
+        loadConfig();
+        lastUsedTimeMap = new HashMap<>();
+    }
+
+    private void loadConfig() {
+        FileConfiguration config = getConfig();
+        maxUses = config.getInt("max_uses", 10);
+        cooldownSeconds = config.getInt("cooldown", 5);
+    }
+
+    @Override
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+        if (command.getName().equalsIgnoreCase("givehealstick")) {
+            if (!(sender instanceof Player)) {
+                sender.sendMessage("Only players can use this command!");
+                return true;
+            }
+            Player player = (Player) sender;
+            int remainingUses = 0; // Initially set to zero uses
+            ItemStack stick = createHealingStick(remainingUses);
+            player.getInventory().addItem(stick);
+            return true;
+        }
+        return false;
+    }
+
+
+    private ItemStack createHealingStick(int remainingUses) {
+        ItemStack stick = new ItemStack(Material.STICK);
+        ItemMeta meta = stick.getItemMeta();
+        if (meta != null) {
+            // Set display name with color codes
+            meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', "Healing Stick"));
+
+            // Set lore with color codes
+            List<String> lore = new ArrayList<>();
+            lore.add(ChatColor.translateAlternateColorCodes('&', "Right-click to heal instantly!"));
+            lore.add(ChatColor.translateAlternateColorCodes('&', "Remaining Uses: " + remainingUses + "/" + maxUses));
+            meta.setLore(lore);
+
+            // Retrieve custom model data from config
+            FileConfiguration config = getConfig();
+            int customModelData = config.getInt("custom_model_data", 0); // Default to 0 if not specified in config
+            meta.setCustomModelData(customModelData);
+
+            stick.setItemMeta(meta);
+        }
+        return stick;
+    }
+
+
+
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        Player player = event.getPlayer();
+        ItemStack item = player.getInventory().getItemInMainHand();
+
+        if (item != null && item.getType() == Material.STICK && item.hasItemMeta()) {
+            ItemMeta meta = item.getItemMeta();
+            if (meta != null && meta.hasDisplayName() && meta.getDisplayName().equals("Healing Stick")) {
+                if (checkCooldown(player)) {
+                    player.sendMessage("Stick is on cooldown!");
+                    return;
+                }
+                int uses = getRemainingUses(meta);
+                if (uses >= maxUses) {
+                    player.sendMessage("You've used up all the charges on this stick!");
+                    return;
+                }
+
+                AttributeInstance maxHealthAttribute = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+                if (maxHealthAttribute != null) {
+                    double maxHealth = maxHealthAttribute.getValue();
+                    player.setHealth(maxHealth);
+                } else {
+                    player.sendMessage("Failed to get max health attribute. Please contact server administrator.");
+                    return;
+                }
+
+                // Update the lore to reflect the remaining uses
+                List<String> lore = meta.getLore();
+                if (lore != null && !lore.isEmpty()) {
+                    lore.set(1, "Remaining Uses: " + (uses + 1) + "/" + maxUses);
+                    meta.setLore(lore);
+                    item.setItemMeta(meta);
+                    updateLastUsedTime(player);
+                }
+            }
+        }
+    }
+
+    private int getRemainingUses(ItemMeta meta) {
+        List<String> lore = meta.getLore();
+        if (lore != null && lore.size() >= 2) {
+            String remainingUsesLine = lore.get(1);
+            String[] parts = remainingUsesLine.split("/");
+            if (parts.length == 2) {
+                try {
+                    return Integer.parseInt(parts[0].replaceAll("\\D+", ""));
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+        return 0;
+    }
+
+    private boolean checkCooldown(Player player) {
+        if (!lastUsedTimeMap.containsKey(player)) {
+            return false;
+        }
+        long lastUsedTime = lastUsedTimeMap.get(player);
+        long currentTime = System.currentTimeMillis() / 1000; // Convert to seconds
+        return (currentTime - lastUsedTime) < cooldownSeconds;
+    }
+
+    private void updateLastUsedTime(Player player) {
+        lastUsedTimeMap.put(player, System.currentTimeMillis() / 1000); // Convert to seconds
+    }
+}
