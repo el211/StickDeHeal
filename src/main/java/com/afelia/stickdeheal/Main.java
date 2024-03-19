@@ -15,6 +15,9 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.bukkit.ChatColor;
+import org.bukkit.command.ConsoleCommandSender;
+import org.bukkit.Bukkit;
+
 
 
 import java.util.ArrayList;
@@ -49,13 +52,50 @@ public class Main extends JavaPlugin implements Listener {
                 return true;
             }
             Player player = (Player) sender;
+
+            // Check if player has permission to give regeneration sticks
+            if (!player.hasPermission("healstick.give")) {
+                player.sendMessage(ChatColor.RED + "You don't have permission to use this command.");
+                return true;
+            }
+
             int remainingUses = 0; // Initially set to zero uses
             ItemStack stick = createHealingStick(remainingUses);
             player.getInventory().addItem(stick);
             return true;
+        } else if (command.getName().equalsIgnoreCase("giveplayerhealstick")) {
+            if (args.length != 1) {
+                sender.sendMessage(ChatColor.RED + "Usage: /giveplayerhealstick <player>");
+                return false;
+            }
+
+            // Check if the sender is the console
+            if (!(sender instanceof ConsoleCommandSender)) {
+                sender.sendMessage(ChatColor.RED + "This command can only be executed from the console.");
+                return true;
+            }
+
+            Player target = Bukkit.getPlayer(args[0]);
+            if (target == null || !target.isOnline()) {
+                sender.sendMessage(ChatColor.RED + "Player not found or not online.");
+                return true;
+            }
+
+            // Check if console has permission to give regeneration sticks to other players
+            if (!sender.hasPermission("healstick.giveplayer")) {
+                sender.sendMessage(ChatColor.RED + "You don't have permission to use this command.");
+                return true;
+            }
+
+            int remainingUses = 0; // Initially set to zero uses
+            ItemStack stick = createHealingStick(remainingUses);
+            target.getInventory().addItem(stick);
+            sender.sendMessage(ChatColor.GREEN + "You have given a healing stick to " + target.getName() + ".");
+            return true;
         }
         return false;
     }
+
 
 
     private ItemStack createHealingStick(int remainingUses) {
