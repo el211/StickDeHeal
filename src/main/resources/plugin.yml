@@ -9,4 +9,10 @@ commands:
   givehealstick:
     description: Gives the player a healing stick.
     usage: /givehealstick
+    permission: healstick.give
+
+  giveplayerregenstick:
+    description: Gives a player a healing stick.
+    usage: /giveplayerhealstick <player>
+    permission: healstick.giveplayer
 
